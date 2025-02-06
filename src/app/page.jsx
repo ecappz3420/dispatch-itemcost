@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { Form, Input, InputNumber, Select, Button, Modal, Flex } from "antd";
 import currencies from "@/utils/currencies";
-import { useSearchParams } from "next/navigation";
+import useQueryId from "@/lib/useQueryId";
 
 const currencyOptions = currencies.map((currency) => ({
   label: currency.code,
@@ -10,20 +10,18 @@ const currencyOptions = currencies.map((currency) => ({
   key: currency.code,
 }));
 
-const page = () => {
+const PageContent = () => {
   const [form] = Form.useForm();
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [convertedCurrency, setConvertedCurrency] = useState("ZMW");
   const [amount, setAmount] = useState(0);
-  const [convertedAmount, setConvertedAmount] = useState(0);
   const [exchangeRate, setExchangeRate] = useState(0);
   const [currencyModify, setCurrencyModify] = useState(0);
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const inputRef = useRef(null);
 
-  const params = useSearchParams();
-  const id = params.get("id");
+  const id = useQueryId();
 
   useEffect(() => {
     if (id) {
@@ -40,11 +38,13 @@ const page = () => {
           const data = await response.json();
           if (data.records.code === 3000) {
             const record = data.records.data[0];
-            form.setFieldValue("Item", record.Item);
+            form.setFieldsValue({
+              Item: record.Item,
+              Cost: record.Cost?.replace(/[^0-9.]/g, "") || 0,
+            });
             setBaseCurrency(record.Base_Currency);
             setConvertedCurrency(record.Converted_Currency);
             setAmount(record.Paying_In?.replace(/[^0-9.]/g, "") || 0);
-            setConvertedAmount(record.Cost?.replace(/[^0-9.]/g, "") || 0);
           }
           console.log(data);
         } catch (error) {
@@ -53,7 +53,7 @@ const page = () => {
       };
       fetchRecord();
     }
-  }, [id]);
+  }, [id, form]);
 
   const fetchExchangeRate = async (base, converted) => {
     try {
@@ -77,7 +77,7 @@ const page = () => {
     setExchangeRate(exchange_rate);
     setCurrencyModify(exchange_rate);
     const converted_amount = amount * exchange_rate;
-    setConvertedAmount(converted_amount.toFixed(2)); // round to 2 decimal places
+    form.setFieldValue("Cost", converted_amount.toFixed(2)); // round to 2 decimal places
   };
   useEffect(() => {
     if (!editMode) {
@@ -93,7 +93,7 @@ const page = () => {
       setCurrencyModify(exchange_rate);
       setExchangeRate(exchange_rate);
       const converted_amount = amount * exchange_rate;
-      setConvertedAmount(converted_amount.toFixed(2)); // round to 2 decimal places
+      form.setFieldValue("Cost", converted_amount.toFixed(2)); // round to 2 decimal places
     }
   };
   const handleBaseCurrencyChange = async (currency) => {
@@ -108,18 +108,18 @@ const page = () => {
       setExchangeRate(exchange_rate);
       setCurrencyModify(exchange_rate);
       const converted_amount = amount * exchange_rate;
-      setConvertedAmount(converted_amount.toFixed(2)); // round to 2 decimal places
+      form.setFieldValue("Cost", converted_amount.toFixed(2)); // round to 2 decimal places
     }
   };
   const handleAmountChange = (value) => {
     setAmount(value);
     const converted_amount = value * exchangeRate;
-    setConvertedAmount(converted_amount.toFixed(2)); // round to 2 decimal places
+    form.setFieldValue("Cost", converted_amount.toFixed(2)); // round to 2 decimal places
   };
   const handleConversionRate = () => {
     setExchangeRate(currencyModify);
     const converted_amount = amount * currencyModify;
-    setConvertedAmount(converted_amount.toFixed(2)); // round to 2 decimal places
+    form.setFieldValue("Cost", converted_amount.toFixed(2)); // round to 2 decimal places
   };
 
   useEffect(() => {
@@ -162,9 +162,9 @@ const page = () => {
       Paying_In: `${
         currencies.find((i) => i.code === baseCurrency).symbol
       } ${amount}`,
-      Cost: `${
-        currencies.find((i) => i.code === convertedCurrency).symbol
-      } ${convertedAmount}`,
+      Cost: `${currencies.find((i) => i.code === convertedCurrency).symbol} ${
+        data.Cost
+      }`,
       Base_Currency: baseCurrency,
       Converted_Currency: convertedCurrency,
       Approval_Status: "Pending",
@@ -213,7 +213,7 @@ const page = () => {
               <Form.Item
                 label="Paying In"
                 name="Paying_In"
-                className="w-[300px] mb-1"
+                className="w-[300px] !mb-1"
               >
                 <InputNumber
                   addonBefore={payingInCurrenciesSelect}
@@ -260,7 +260,6 @@ const page = () => {
             </Flex>
             <Form.Item label="Cost" name="Cost" className="w-[300px]">
               <InputNumber
-                value={convertedAmount}
                 addonBefore={costCurrenciesSelect}
                 className="w-[300px]"
                 disabled
@@ -282,6 +281,14 @@ const page = () => {
         </Form>
       </div>
     </>
+  );
+};
+
+const page = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PageContent />
+    </Suspense>
   );
 };
 
