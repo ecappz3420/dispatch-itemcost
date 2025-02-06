@@ -10,7 +10,7 @@ const currencyOptions = currencies.map((currency) => ({
   key: currency.code,
 }));
 
-const App = () => {
+const page = () => {
   const [form] = Form.useForm();
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [convertedCurrency, setConvertedCurrency] = useState("ZMW");
@@ -216,7 +216,6 @@ const App = () => {
                 className="w-[300px] mb-1"
               >
                 <InputNumber
-                  step={0.01}
                   addonBefore={payingInCurrenciesSelect}
                   className="w-[300px]"
                   onChange={(value) => handleAmountChange(value)}
@@ -261,7 +260,6 @@ const App = () => {
             </Flex>
             <Form.Item label="Cost" name="Cost" className="w-[300px]">
               <InputNumber
-                step={0.01}
                 value={convertedAmount}
                 addonBefore={costCurrenciesSelect}
                 className="w-[300px]"
@@ -287,4 +285,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default page;
