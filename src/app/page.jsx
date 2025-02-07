@@ -1,6 +1,15 @@
 "use client";
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { Form, Input, InputNumber, Select, Button, Modal, Flex } from "antd";
+import {
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Button,
+  Modal,
+  Flex,
+  message,
+} from "antd";
 import currencies from "@/utils/currencies";
 import useQueryId from "@/lib/useQueryId";
 
@@ -20,8 +29,10 @@ const PageContent = () => {
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const inputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
 
   const id = useQueryId();
+  const [messageAPI, contextHolder] = message.useMessage();
 
   useEffect(() => {
     if (id) {
@@ -157,6 +168,8 @@ const PageContent = () => {
   );
 
   const onSubmit = async (data) => {
+    setLoading(true);
+    messageAPI.loading("Adding Record...!");
     const formData = {
       ...data,
       Paying_In: `${
@@ -181,10 +194,16 @@ const PageContent = () => {
           : JSON.stringify({ formName: "Dispatch_Item_Cost", formData }),
       });
       const result = await response.json();
-      console.log(result);
       form.resetFields();
+      messageAPI.destroy();
+      messageAPI.success("Record Successfully Added!");
+      setLoading(false);
     } catch (error) {
       console.error(error);
+      form.resetFields();
+      messageAPI.destroy();
+      setLoading(false);
+      messageAPI.error("Failed to add record");
     }
   };
 
@@ -194,12 +213,7 @@ const PageContent = () => {
         <h4 className="font-medium">Dispatch Item Cost</h4>
       </div>
       <div className="px-2 pb-2">
-        <Form
-          form={form}
-          onFinish={onSubmit}
-          layout="vertical"
-          initialValues={{ Paying_In: 0, Cost: 0 }}
-        >
+        <Form form={form} onFinish={onSubmit} layout="vertical">
           <div className="grid grid-cols-1 sm:grid-cols-2 py-2 gap-4 justify-items-start">
             <Form.Item
               label="Item"
@@ -268,12 +282,22 @@ const PageContent = () => {
           </div>
           <Flex justify="center" gap="large">
             <Form.Item label={null}>
-              <Button className="w-28" htmlType="reset">
+              <Button
+                className="w-28"
+                htmlType="reset"
+                onClick={() => form.resetFields()}
+              >
                 Reset
               </Button>
             </Form.Item>
+            {contextHolder}
             <Form.Item label={null}>
-              <Button type="primary" htmlType="submit" className="w-28">
+              <Button
+                type="primary"
+                htmlType="submit"
+                className="w-28"
+                loading={loading}
+              >
                 Submit
               </Button>
             </Form.Item>
